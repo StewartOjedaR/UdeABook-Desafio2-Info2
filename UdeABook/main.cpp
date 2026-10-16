@@ -6,7 +6,10 @@ using namespace std;
 
     int main() {
         // Inicializamos el gestor principal
-        Sistema redSocial("C:/Users/ojeda/OneDrive/Documentos/Desafio2/matriz_adyacencia.dat","C:/Users/ojeda/OneDrive/Documentos/Desafio2/usuarios.dat","C:/Users/ojeda/OneDrive/Documentos/Desafio2/mensajes.dat");
+        char rutaMatriz[]="matriz_adyacencia.txt";
+        char rutaBaseUsuarios[]="usuarios.txt";
+        char rutaBaseMensajes[]="mensajes.txt";
+        Sistema redSocial(rutaMatriz,rutaBaseUsuarios,rutaBaseMensajes);
         redSocial.menuInicio();
 /*        // Creamos al primer usuario (su ID será 0 automáticamente)
         redSocial.registrarNuevoUsuario("stewart", "mi_password_123");

@@ -32,13 +32,15 @@ struct Fecha {
 
 class Mensaje {
 private:
-    ulong idMensaje;                 // Identificador único global del mensaje
+    ulong idMensaje;                 // Identificador unico global del mensaje
     uint idRemitente;                     // ID del usuario que envía
     uint idDestinatario;                  // ID del usuario que recibe (el dueño de la bandeja o el contacto)
     Fecha fecha;                                  // Fecha y hora del mensaje
     char contenido[512];                          // Texto del mensaje (ampliado a 512 bytes)
-    bool leido;                                   // Estado (true si ya fue leído)
+    bool leido;                                   // Estado (true si ya fue leido)
     long long desplazamientoSiguienteMensaje;     // Desplazamiento en bytes al siguiente mensaje en el archivo (-1 si es el último)
+
+
 
 public:
     Mensaje() {
