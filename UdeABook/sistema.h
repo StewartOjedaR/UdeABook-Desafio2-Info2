@@ -3,7 +3,7 @@
 #include <iostream>
 #include <fstream>
 //#include "album.h"
-//#include "mensaje.h"
+#include "mensaje.h"
 #include "usuario.h"
 using namespace std;
 typedef unsigned int uint;
@@ -20,7 +20,8 @@ size_t calcularBytesMatriz(unsigned int n){
 class Sistema {
 private:
     Usuario* usuarioActual;
-    uint cantidadDeUsuarios;
+    uint contadorDeUsuarios;
+    ulong contadorDeMensajesGlobales;                 // Identificador unico global del mensaje para generar IDs únicos globales
     bool sesionIniciada;
     char* rutaBaseUsuarios;
     char* rutaBaseMensajes;
@@ -45,8 +46,8 @@ public:
     void agregarAmistad(uint id1, uint id2);// Establece amistad entre dos usuarios usando operaciones de bits
     void sugerirAmigos(uint idUsuario); // Sugiere amigos encontrando amigos en común mediante operaciones de bits
     bool estaSesionIniciada() const { return sesionIniciada; }
-    uint getCantidadDeUsuarios() const { return cantidadDeUsuarios; }
-    void calcularBytesDisco();
+    uint getContadorDeUsuarios() const { return contadorDeUsuarios; }
+    uint contarMensajesTotalesEnDisco();
 
 };
 
@@ -62,19 +63,20 @@ Sistema::Sistema(char* _rutaMatrizAdyacente, char* _rutaBaseUsuarios, char* _rut
         creador.close();
         archivoMatriz.open("matrizAdyacente.txt", std::ios::in | std::ios::out | std::ios::binary);
     }
-    matrizAdyacente=new unsigned char[calcularBytesMatriz(cantidadDeUsuarios)];
+    matrizAdyacente=new unsigned char[calcularBytesMatriz(contadorDeUsuarios)];
     // Leer la matriz desde el archivo
-    for (int usuarioFila = 0; usuarioFila < cantidadDeUsuarios; ++usuarioFila) {
-        for (int usuarioColumna = 0; usuarioColumna < cantidadDeUsuarios; ++usuarioColumna) {
+    for (int usuarioFila = 0; usuarioFila < contadorDeUsuarios; ++usuarioFila) {
+        for (int usuarioColumna = 0; usuarioColumna < contadorDeUsuarios; ++usuarioColumna) {
             int valorConexion;
             archivoMatriz >> valorConexion;
             if (valorConexion == 1) {
-                int indiceLineal = usuarioFila * cantidadDeUsuarios + usuarioColumna;
+                int indiceLineal = usuarioFila * contadorDeUsuarios + usuarioColumna;
                 matrizAdyacente[indiceLineal / 8] |= (1 << (indiceLineal % 8));
             }
         }
     }
     archivoMatriz.close();
+    contadorDeMensajesGlobales=contarMensajesTotalesEnDisco();
 
 }
 Sistema::~Sistema() {
@@ -84,7 +86,7 @@ Sistema::~Sistema() {
 void Sistema::registrarNuevoUsuario(const char* nombreUsuario, const char* contrasena) {
     // 1. Asignar el ID basandonos en la cantidad actual de usuarios (empezando desde 0)
     calcularUsuariosDesdeDisco();
-    uint nuevoId = cantidadDeUsuarios+1;
+    uint nuevoId = contadorDeUsuarios+1;
 
     // 2. Crear el objeto Usuario en memoria temporal
     Usuario nuevoUsuario(nuevoId, nombreUsuario, contrasena);
@@ -114,24 +116,24 @@ void Sistema::registrarNuevoUsuario(const char* nombreUsuario, const char* contr
     cout << " - Nombre: " << nombreUsuario << "\n";
 }
 void Sistema::registrarNuevoUsuarioEnMatriz(uchar*& matrizAdyacente) {
-    cantidadDeUsuarios++;
-    int nuevoTotalBits = cantidadDeUsuarios * cantidadDeUsuarios;
+    contadorDeUsuarios++;
+    int nuevoTotalBits = contadorDeUsuarios * contadorDeUsuarios;
     int nuevoTotalBytes = (nuevoTotalBits + 7) / 8;
 
     // 1. Crear un nuevo arreglo dinamico mas grande inicializado en 0
     unsigned char* matrizNueva = new unsigned char[nuevoTotalBytes]();
 
     // 2. Copiar las conexiones existentes a su nueva posicion recalculada
-    for (int fila = 0; fila < cantidadDeUsuarios-1; ++fila) {
-        for (int columna = 0; columna < cantidadDeUsuarios-1; ++columna) {
+    for (int fila = 0; fila < contadorDeUsuarios-1; ++fila) {
+        for (int columna = 0; columna < contadorDeUsuarios-1; ++columna) {
 
             // Calcular el índice lineal en la matriz vieja
-            int indiceAntiguo = fila * (cantidadDeUsuarios-1) + columna;
+            int indiceAntiguo = fila * (contadorDeUsuarios-1) + columna;
             bool tieneConexion = (matrizAdyacente[indiceAntiguo / 8] & (1 << (indiceAntiguo % 8))) != 0;
 
             if (tieneConexion) {
                 // Calcular el nuevo indice lineal utilizando el nuevo ancho de la red
-                int indiceNuevo = fila * cantidadDeUsuarios + columna;
+                int indiceNuevo = fila * contadorDeUsuarios + columna;
                 matrizNueva[indiceNuevo / 8] |= (1 << (indiceNuevo % 8));
             }
         }
@@ -140,19 +142,19 @@ void Sistema::registrarNuevoUsuarioEnMatriz(uchar*& matrizAdyacente) {
     // 3. Liberar la memoria de la matriz antigua
     delete[] matrizAdyacente;
     matrizAdyacente=matrizNueva;
-     cout << "Nuevo usuario registrado. Total usuarios: " << cantidadDeUsuarios << "\n";
+     cout << "Nuevo usuario registrado. Total usuarios: " << contadorDeUsuarios << "\n";
 
 }
 
 
 
 void Sistema::agregarAmistad(uint id1, uint id2) {
-    if (id1 >= cantidadDeUsuarios || id2 >= cantidadDeUsuarios) return;
-    usuarioActual->establecerAmistad(matrizAdyacente,id1, id2,cantidadDeUsuarios);
+    if (id1 >= contadorDeUsuarios || id2 >= contadorDeUsuarios) return;
+    usuarioActual->establecerAmistad(matrizAdyacente,id1, id2,contadorDeUsuarios);
 }
 void Sistema::sugerirAmigos(uint idUsuario) {
-    if (idUsuario >= cantidadDeUsuarios) return;
-    usuarioActual->sugerirAmistades(matrizAdyacente,idUsuario,cantidadDeUsuarios);
+    if (idUsuario >= contadorDeUsuarios) return;
+    usuarioActual->sugerirAmistades(matrizAdyacente,idUsuario,contadorDeUsuarios);
 }
 void Sistema::menuInicio() {
     int opcion = 0;
@@ -221,7 +223,7 @@ void Sistema::menuInicio() {
 void Sistema::calcularUsuariosDesdeDisco() {
     std::ifstream archivo(rutaBaseUsuarios, std::ios::binary | std::ios::ate);
     if (!archivo.is_open()) {
-        cantidadDeUsuarios = 0;
+        contadorDeUsuarios = 0;
         return;
     }
 
@@ -231,13 +233,33 @@ void Sistema::calcularUsuariosDesdeDisco() {
     archivo.close();
 
     if (tamanioTotalBytes <= 0) {
-        cantidadDeUsuarios = 0;
+        contadorDeUsuarios = 0;
     } else {
         // Dividimos el peso total del archivo entre lo que pesa un solo objeto Usuario en bytes
-        cantidadDeUsuarios = static_cast<unsigned int>(tamanioTotalBytes / sizeof(Usuario));
+        contadorDeUsuarios = static_cast<unsigned int>(tamanioTotalBytes / sizeof(Usuario));
     }
 }
-void Sistema::calcularBytesDisco() {
+// Método para contar el total absoluto de mensajes almacenados en el disco
+uint Sistema::contarMensajesTotalesEnDisco() {
+    // Abrir el archivo en modo binario y colocar el cabezal directamente al final (ios::ate)
+    ifstream archivo(rutaBaseMensajes, ios::binary | ios::ate);
+    if (!archivo.is_open()) {
+        // Si el archivo no existe o no se puede abrir, el total de mensajes es 0
+        return 0;
+    }
 
+    // Obtener la posición actual del cabezal al final del archivo (nos da el tamaño total en bytes)
+    long long bytesTotales = archivo.tellg();
+    archivo.close();
+
+    // Si el archivo está vacío, retorna 0
+    if (bytesTotales <= 0) {
+        return 0;
+    }
+
+    // Dividir los bytes totales entre el tamaño en bytes de una sola estructura MensajeD
+    int totalMensajes = bytesTotales / sizeof(Mensaje);
+
+    return totalMensajes;
 }
 #endif // SISTEMA_H

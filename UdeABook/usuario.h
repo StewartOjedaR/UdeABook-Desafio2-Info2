@@ -4,14 +4,7 @@
 using namespace std;
 typedef unsigned int uint;
 typedef unsigned short int ushort ;
-void copiarCadena(char* destino, const char* origen, int maxLen) {
-    int i = 0;
-    while (origen[i] != '\0' && i < maxLen - 1) {
-        destino[i] = origen[i];
-        i++;
-    }
-    destino[i] = '\0';
-}
+
 
 int longitudCadena(const char* str){
     if (str == nullptr) return 0;
@@ -36,6 +29,14 @@ private:
     long long desplazamientoPrimerAlbum;
     long long desplazamientoPrimerMensaje;
  //   bool activo;
+    void copiarCadena(char* destino, const char* origen, int maxLen) {
+        int i = 0;
+        while (origen[i] != '\0' && i < maxLen - 1) {
+            destino[i] = origen[i];
+            i++;
+        }
+        destino[i] = '\0';
+    }
 
 public:
     Usuario();
