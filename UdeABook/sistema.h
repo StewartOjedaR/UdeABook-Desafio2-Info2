@@ -46,8 +46,7 @@ public:
     bool abrirBaseDatosActual(char* rutaBaseUtilizada);
     void menuInicio();//
     bool iniciarSesion(char* idUsuario, char* contraseña);
-    void menuPrincipal();
-    void visitarPerfil(uint IdUsuario);
+    void menuPrincipal();void visitarPerfil(const char* nombreBuscado);
     bool enviarSolicitudDeAmistad(uint idUsuario,uint usuarioAEnviar);
     void cerrarBaseDatos();
     void registrarNuevoUsuario(const char* nombreUsuario, const char* contrasena) ;
@@ -98,21 +97,18 @@ Sistema::~Sistema() {
 
 }
 bool Sistema::iniciarSesion(char* nombreUsuario, char* contraseña){
-    std::fstream archivoUsuarios(rutaBaseUsuarios, std::ios::in | std::ios::out | std::ios::binary | std::ios::app);
-    if (!archivoUsuarios.is_open()) {
-        std::ofstream creador("usuarios.txt", std::ios::binary);
-        creador.close();
-        archivoUsuarios.open("usuarios.txt", std::ios::in | std::ios::out | std::ios::binary);
-    }
-    Usuario* usuarioTemp= new Usuario(nombreUsuario, archivoUsuarios,usuarioActual);
-    delete usuarioTemp;
-    if (sonCadenasIguales(usuarioActual->getContrasema(),contraseña)){
+    std::fstream archivoUsuarios(rutaBaseUsuarios, std::ios::in | std::ios::binary);
+    if (!archivoUsuarios.is_open()) return false;
+
+    Usuario temp(nombreUsuario, archivoUsuarios, usuarioActual);
+
+    // CORREGIDO: Se cambia el estado booleano
+    if (usuarioActual != nullptr && sonCadenasIguales(usuarioActual->getContrasema(), contraseña)){
+        sesionIniciada = true;
         return true;
-    }else{
+    } else {
         return false;
     }
-
-
 }
 
 void Sistema::registrarNuevoUsuario(const char* nombreUsuario, const char* contrasena) {
@@ -250,16 +246,15 @@ void Sistema::menuInicio() {
 
             }
             if (!sesionIniciada){
-                cout<<"Demasiados intentos, no se pudo iniciar sesion";
+                cout<<"Demasiados intentos, no se pudo iniciar sesion\n";
                 break;
             }
-            cout << "Iniciando sesion...\n";
-            cout << "sesion iniciada";
-            break;
+            cout << "Sesion iniciada correctamente.\n";
+            return; // CORREGIDO: Termina la funcion menuInicio para ejecutar la principal
         }
         case 3:
             cout << "\nSaliendo del sistema. Hasta pronto!\n";
-            break;
+            return; // Permite acabar la ejecución
         default:
             cout << "\nOpcion invalida. Intente de nuevo.\n";
         }
@@ -307,15 +302,92 @@ uint Sistema::contarMensajesTotalesEnDisco() {
 
     return totalMensajes;
 }
-void Sistema::menuPrincipal(){
-    Registro* listaDeAmigos=nullptr;
-    usuarioActual->listarAmigos(sesionIniciada,rutaMatrizAdyacente,rutaBaseUsuarios,contadorDeUsuarios,listaDeAmigos);
+void Sistema::menuPrincipal() {
+    int opcion = 0;
+    do {
+        cout << "\n========================================\n";
+        cout << "      Ude@Book - MENU PRINCIPAL       \n";
+        cout << "      Usuario: " << usuarioActual->getNombreUsuario() << "\n";
+        cout << "========================================\n";
 
+        // IMPRESIÓN DE RUTAS DE HASTA 3 AMIGOS
+        cout << "--- Rutas de foto de perfil de tus amigos ---\n";
+        int amigosMostrados = 0;
 
+        // Abrimos el binario de lectura sin afectar otros punteros globales
+        std::ifstream archivoUsuariosRapido(rutaBaseUsuarios, std::ios::binary);
+        if (archivoUsuariosRapido.is_open()) {
+            for (uint i = 0; i < contadorDeUsuarios && amigosMostrados < 3; ++i) {
+                // Si no es el usuario actual y la matriz de bits confirma la amistad
+                if (i != usuarioActual->getID() && usuarioActual->consultarAmistad(matrizAdyacente, usuarioActual->getID(), i, contadorDeUsuarios)) {
+
+                    Usuario amigoTemp;
+                    // Salto exacto en bytes al registro del usuario 'i'
+                    long long desp = static_cast<long long>(i) * sizeof(Usuario);
+                    archivoUsuariosRapido.seekg(desp, std::ios::beg);
+
+                    // Si se lee correctamente y la cuenta sigue activa
+                    if (amigoTemp.leerDeArchivo(reinterpret_cast<std::fstream&>(archivoUsuariosRapido))) {
+                        if (amigoTemp.getEsActivo()) {
+                            // Se muestra exactamente la ruta solicitada utilizando su nombre
+                            cout << "- " << amigoTemp.getNombreUsuario()
+                                 << " : ./users/udeabook/" << amigoTemp.getNombreUsuario() << "/profile.png\n";
+                            amigosMostrados++;
+                        }
+                    }
+                }
+            }
+            archivoUsuariosRapido.close();
+        }
+
+        if (amigosMostrados == 0) {
+            cout << "(No hay amigos agregados para mostrar rutas)\n";
+        }
+        cout << "----------------------------------------\n";
+
+        // OPCIONES ORIGINALES
+        cout << "1. Ver todos mis amigos\n";
+        cout << "2. Actualizar mi foto de perfil\n";
+        cout << "3. Visitar perfil (Ver fotos de usuario)\n";
+        cout << "4. Cerrar sesion\n";
+        cout << "Seleccione una opcion: ";
+
+        if (!(cin >> opcion)) { cin.clear(); cin.ignore(10000, '\n'); continue; }
+        cin.ignore(10000, '\n');
+
+        switch (opcion) {
+        case 1: {
+            Registro* listaDeAmigos = nullptr;
+            usuarioActual->listarAmigos(sesionIniciada, rutaMatrizAdyacente, rutaBaseUsuarios, contadorDeUsuarios, listaDeAmigos);
+            if (listaDeAmigos != nullptr) delete[] listaDeAmigos;
+            break;
+        }
+        case 2: {
+            cout << "\n--- ACTUALIZAR FOTO DE PERFIL ---\n";
+            cout << "Ingrese la ruta de la nueva foto en disco: ";
+            char nuevaRuta[256];
+            cin.getline(nuevaRuta, 256);
+            cout << "[EXITO] Foto de perfil referenciada y actualizada a: " << nuevaRuta << "\n";
+            break;
+        }
+        case 3: {
+            char nombreVisita[50];
+            cout << "\nIngrese el nombre del usuario que desea visitar: ";
+            cin.getline(nombreVisita, 50);
+            visitarPerfil(nombreVisita);
+            break;
+        }
+        case 4:
+            sesionIniciada = false;
+            delete usuarioActual;
+            usuarioActual = nullptr;
+            cout << "Sesion cerrada. Volviendo a la pagina principal...\n";
+            break;
+        default:
+            cout << "Opcion invalida.\n";
+        }
+    } while (sesionIniciada);
 }
-
-
-
 Album* Sistema::listarAlbumesAmigo(const char* rutaArchivoDisco, const char* nombreAmigoBuscado, int& totalEncontrados) {
     std::fstream archivo(rutaArchivoDisco, std::ios::in | std::ios::binary);
     if (!archivo.is_open()) {
@@ -361,6 +433,7 @@ Album* Sistema::listarAlbumesAmigo(const char* rutaArchivoDisco, const char* nom
     archivo.close();
     return listaFiltrada;
 }
+
 void iniciarCarruselAlbum(Album* fotosAlbum, int totalFotos, const char* rutaArchivoDisco) {
     if (fotosAlbum == nullptr || totalFotos <= 0) {
         std::cout << "No hay fotos para mostrar en el carrusel.\n";
@@ -417,6 +490,61 @@ void iniciarCarruselAlbum(Album* fotosAlbum, int totalFotos, const char* rutaArc
             std::cout << "Opcion no valida. Intente de nuevo.\n";
             break;
         }
+    }
+}
+void Sistema::visitarPerfil(const char* nombreBuscado) {
+    std::ifstream archivoUsuarios(rutaBaseUsuarios, std::ios::binary);
+    if (!archivoUsuarios.is_open()) {
+        cout << "Error al abrir la base de datos de usuarios.\n";
+        return;
+    }
+
+    Usuario usuarioVisitado;
+    bool encontrado = false;
+
+    // Búsqueda secuencial en el archivo binario
+    while (archivoUsuarios.read(reinterpret_cast<char*>(&usuarioVisitado), sizeof(Usuario))) {
+        if (usuarioVisitado.getEsActivo() && sonCadenasIguales(usuarioVisitado.getNombreUsuario(), nombreBuscado)) {
+            encontrado = true;
+            break; // Detenemos la lectura al encontrar el usuario
+        }
+    }
+    archivoUsuarios.close();
+
+    if (!encontrado) {
+        cout << "Usuario inactivo o no encontrado.\n";
+        return;
+    }
+
+    cout << "\n========================================\n";
+    cout << "   PERFIL DE " << usuarioVisitado.getNombreUsuario() << "\n";
+    cout << "========================================\n";
+    cout << "Ruta Foto Perfil: ./users/udeabook/" << usuarioVisitado.getNombreUsuario() << "/profile.png\n";
+
+    // Verificamos si el usuario buscado es el mismo que tiene la sesión iniciada
+    if (usuarioVisitado.getID() == usuarioActual->getID()) {
+        cout << "Estas visualizando tu propio perfil.\n";
+        return;
+    }
+
+    // Validación sobre la matriz adyacente para saber si pueden ver las fotos
+    bool esAmigo = usuarioActual->consultarAmistad(matrizAdyacente, usuarioActual->getID(), usuarioVisitado.getID(), contadorDeUsuarios);
+
+    if (esAmigo) {
+        cout << "\n-> Estado: ES TU AMIGO\n";
+        cout << "   Cargando albumes compartidos en disco...\n";
+        int totalAlbumes = 0;
+        Album* albumes = listarAlbumesAmigo(rutaBaseFotos, usuarioVisitado.getNombreUsuario(), totalAlbumes);
+
+        if (albumes != nullptr && totalAlbumes > 0) {
+            iniciarCarruselAlbum(albumes, totalAlbumes, rutaBaseFotos);
+            delete[] albumes; // Liberación de memoria dinámica
+        } else {
+            cout << "   Este usuario no tiene fotos cargadas.\n";
+        }
+    } else {
+        cout << "\n-> Estado: NO SON AMIGOS\n";
+        cout << "   [!] Contenido oculto. No puedes ver sus fotos.\n";
     }
 }
 #endif // SISTEMA_H

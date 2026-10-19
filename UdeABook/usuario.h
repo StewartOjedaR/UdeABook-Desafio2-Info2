@@ -138,13 +138,7 @@ public:
 
     Usuario();
     Usuario(char* _nombreUsuario, fstream &archivoUsuarios, Usuario*& usuarioActual);
-    Usuario(uint _id, const char* _nombreUsuario, const char* _contrasema) {
-        ID = _id;
-        copiarCadena(nombreUsuario,_nombreUsuario,50);
-        copiarCadena(contrasema,_contrasema,20);
-        desplazamientoPrimerAlbum = -1;
-        desplazamientoPrimerMensaje = -1;
-    }
+    Usuario(uint _id, const char* _nombreUsuario, const char* _contrasema);
 
     ~Usuario() {
 
@@ -183,34 +177,52 @@ public:
     }
 };
 
+// Constructor por defecto
 Usuario::Usuario() {
     ID = 0;
     copiarCadena(nombreUsuario," ",50);
     copiarCadena(contrasema," ",20);
+    esActivo = true; // CORREGIDO: Inicializar activo para ser visible en archivos binarios
     desplazamientoPrimerAlbum = -1;
     desplazamientoPrimerMensaje = -1;
 }
-Usuario::Usuario(char* _nombreUsuario,fstream& archivoUsuarios, Usuario*& usuarioActual ){
-    Usuario* usrTemp=nullptr;
-    while (usrTemp->leerDeArchivo(archivoUsuarios)) {
-        if (usrTemp->getEsActivo()) {
-            // Comparamos cadenas manualmente para evitar std::string
+
+// Constructor con parámetros
+Usuario::Usuario(uint _id, const char* _nombreUsuario, const char* _contrasema) {
+    ID = _id;
+    copiarCadena(nombreUsuario,_nombreUsuario,50);
+    copiarCadena(contrasema,_contrasema,20);
+    esActivo = true; // CORREGIDO
+    desplazamientoPrimerAlbum = -1;
+    desplazamientoPrimerMensaje = -1;
+}
+
+// Constructor para iniciar sesión
+Usuario::Usuario(char* _nombreUsuario, fstream& archivoUsuarios, Usuario*& ptrUsuarioActual) {
+    ptrUsuarioActual = nullptr;
+    Usuario usrTemp; // CORREGIDO: Instancia local en la pila de llamadas, NO puntero nulo
+
+    archivoUsuarios.clear();
+    archivoUsuarios.seekg(0, ios::beg);
+
+    while (usrTemp.leerDeArchivo(archivoUsuarios)) {
+        if (usrTemp.getEsActivo()) {
             int i = 0;
             bool iguales = true;
-            while (_nombreUsuario[i] != '\0' && usrTemp->getNombreUsuario()[i] != '\0') {
-                if (_nombreUsuario[i] != usrTemp->getNombreUsuario()[i]) {
+            while (_nombreUsuario[i] != '\0' && usrTemp.getNombreUsuario()[i] != '\0') {
+                if (_nombreUsuario[i] != usrTemp.getNombreUsuario()[i]) {
                     iguales = false;
                     break;
                 }
                 i++;
             }
-            if (iguales && _nombreUsuario[i] == '\0' && usrTemp->getNombreUsuario()[i] == '\0') {
-                usuarioActual = usrTemp; // Copiamos el objeto encontrado
-                archivoUsuarios.close();
+            if (iguales && _nombreUsuario[i] == '\0' && usrTemp.getNombreUsuario()[i] == '\0') {
+                ptrUsuarioActual = new Usuario();
+                *ptrUsuarioActual = usrTemp; // Clonamos memoria al puntero global
+                break;
             }
         }
     }
-
     archivoUsuarios.close();
 }
 void Usuario::establecerAmistad(unsigned char* arregloBytes, int usuarioActual, int usuarioAAgregar, int totalUsuarios) {
@@ -323,11 +335,20 @@ void Usuario::listarAmigos(bool sesionIniciada, char* nombreArchivoMatriz, char*
 
                 Usuario amigoLeido;
                 // (Nota: para usar ifstream en leerDeArchivo, asegúrate de que acepte std::istream& en lugar de std::fstream&)
+                // Reemplaza el interior del ciclo dentro de listarAmigos (cuando encuentra un amigo)
                 if (amigoLeido.leerDeArchivo(reinterpret_cast<std::fstream&>(archivoUsuarios))) {
                     if (amigoLeido.getEsActivo()) {
                         contadorAmigos++;
                         std::cout << " - [ID: " << amigoLeido.getID() << "] " << amigoLeido.getNombreUsuario() << "\n";
-                        lista->insertar(lista, amigoLeido.getID(),amigoLeido.getNombreUsuario());
+                        // CUMPLIMIENTO: Se ven las rutas de la foto de perfil de tu amigo
+                        std::cout << "   [Foto Perfil]: ./users/udeabook/" << amigoLeido.getNombreUsuario() << "/profile.png\n";
+
+                        // CORREGIDO: Se valida la cabeza antes de insertar
+                        if (lista == nullptr) {
+                            lista = new ListaEnlazada(amigoLeido.getID(), amigoLeido.getNombreUsuario());
+                        } else {
+                            lista->insertar(lista, amigoLeido.getID(), amigoLeido.getNombreUsuario());
+                        }
                         tieneAmigos = true;
                     }
                 }
