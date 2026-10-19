@@ -13,7 +13,7 @@ using namespace std;
         Sistema redSocial(rutaMatriz,rutaBaseUsuarios,rutaBaseMensajes,rutaBaseFotos);
         redSocial.menuInicio();
         if (redSocial.getSesionIniciada()){
-            //redSocial.menuPrincipal();
+            redSocial.menuPrincipal();
         }
 
 
