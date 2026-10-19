@@ -2,33 +2,13 @@
 #define MENSAJE_H
 #include <iostream>
 #include <fstream>
+#include "fecha.h"
 using namespace std;
 typedef unsigned int uint;
 typedef unsigned short int ushort;
 typedef unsigned long long ulong;
 
-struct Fecha {
-    ushort anio;
-    ushort mes;
-    ushort dia;
-    ushort hora;
-    ushort minuto;
 
-    bool esAnterior(const Fecha& otra) const {
-        if (anio != otra.anio) return anio < otra.anio;
-        if (mes != otra.mes) return mes < otra.mes;
-        if (dia != otra.dia) return dia < otra.dia;
-        if (hora != otra.hora) return hora < otra.hora;
-        return minuto < otra.minuto;
-    }
-
-    bool esPosterioOIgual(const Fecha& otra) const {
-        return !esAnterior(otra);
-    }
-
-    bool esAnteriorOIgual(const Fecha& otra) const {return esAnterior(otra) || (anio == otra.anio && mes == otra.mes && dia == otra.dia && hora == otra.hora && minuto == otra.minuto);
-};
-};
 struct ReferenciaMensaje {
     long long desplazamientoEnDisco;
     Fecha fechaMensaje;
@@ -42,14 +22,7 @@ private:
     char contenido[512];                          // Texto del mensaje (ampliado a 512 bytes)
     bool leido;                                   // Estado (true si ya fue leido)
     long long desplazamientoSiguienteMensaje;     // Desplazamiento en bytes al siguiente mensaje en el archivo (-1 si es el ultimo)
-    void copiarCadena(char* destino, const char* origen, int maxLen) {
-        int i = 0;
-        while (origen[i] != '\0' && i < maxLen - 1) {
-            destino[i] = origen[i];
-            i++;
-        }
-        destino[i] = '\0';
-    }
+
 
 
 public:
@@ -72,6 +45,14 @@ public:
     void enviarMensaje(uint idRemitente, uint idDestinatario, Fecha fechaEnvio, const char* texto,uint &contadorDeMensajesGlobales,char* rutaBaseMensajes) ;
     void leerNuevosMensajes(uint idUsuarioActual, char* rutaBaseMensajes);
     void buscarMensajesPorRangoFecha(uint idUsuarioActual, Fecha fechaInicio, Fecha fechaFin, char* rutaMensajes) const;
+    void copiarCadena(char* destino, const char* origen, int maxLen) {
+        int i = 0;
+        while (origen[i] != '\0' && i < maxLen - 1) {
+            destino[i] = origen[i];
+            i++;
+        }
+        destino[i] = '\0';
+    }
 };
 Mensaje::Mensaje() {
     idMensaje = 0;

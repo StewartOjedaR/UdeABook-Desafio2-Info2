@@ -9,8 +9,14 @@ using namespace std;
         char rutaMatriz[]="matriz_adyacencia.txt";
         char rutaBaseUsuarios[]="usuarios.txt";
         char rutaBaseMensajes[]="mensajes.txt";
-        Sistema redSocial(rutaMatriz,rutaBaseUsuarios,rutaBaseMensajes);
+        char rutaBaseFotos[]="fotos.txt";
+        Sistema redSocial(rutaMatriz,rutaBaseUsuarios,rutaBaseMensajes,rutaBaseFotos);
         redSocial.menuInicio();
+        if (redSocial.getSesionIniciada()){
+            //redSocial.menuPrincipal();
+        }
+
+
 /*        // Creamos al primer usuario (su ID será 0 automáticamente)
         redSocial.registrarNuevoUsuario("stewart", "mi_password_123");
         redSocial.registrarNuevoUsuario();

@@ -1,10 +1,16 @@
 #ifndef ALBUM_H
 #define ALBUM_H
-#include <fstream>
-using namespace std;
-typedef unsigned int uint;
-typedef unsigned short int ushort ;
 
+#include <fstream>
+#include <filesystem>
+#include <iostream>
+#include "fecha.h"
+
+namespace fs = std::filesystem;
+using namespace std;
+
+typedef unsigned int uint;
+typedef unsigned short int ushort;
 void copiarCadena(char* destino, const char* origen, int maxLen) {
     int i = 0;
     while (origen[i] != '\0' && i < maxLen - 1) {
@@ -13,99 +19,34 @@ void copiarCadena(char* destino, const char* origen, int maxLen) {
     }
     destino[i] = '\0';
 }
-
-struct Fecha {
-    ushort anio;
-    ushort mes;
-    ushort dia;
-    ushort hora;
-    ushort minuto;
-
-    bool esAnteriorOIgual(const Fecha& otra) const {
-        if (anio != otra.anio) return anio < otra.anio;
-        if (mes != otra.mes) return mes < otra.mes;
-        if (dia != otra.dia) return dia < otra.dia;
-        if (hora != otra.hora) return hora < otra.hora;
-        return minuto <= otra.minuto;
-    }
-};
-class Foto {
-private:
-    unsigned long long idFoto;
-    unsigned int idUsuario;
-    unsigned int idAlbum;
-    char rutaArchivo[256];
-    long long desplazamientoSiguienteFoto;
-
-public:
-    Foto() {
-        idFoto = 0;
-        idUsuario = 0;
-        idAlbum = 0;
-        for (int i = 0; i < 256; ++i) rutaArchivo[i] = '\0';
-        desplazamientoSiguienteFoto = -1;
-    }
-
-    Foto(unsigned long long _idFoto, unsigned int _idUsuario, unsigned int _idAlbum, const char* _ruta) {
-        idFoto = _idFoto;
-        idUsuario = _idUsuario;
-        idAlbum = _idAlbum;
-        copiarCadena(rutaArchivo, _ruta, 256);
-        desplazamientoSiguienteFoto = -1;
-    }
-
-    void escribirEnArchivo(std::fstream& archivo) const {
-        archivo.write(reinterpret_cast<const char*>(this), sizeof(Foto));
-    }
-
-    bool leerDeArchivo(std::fstream& archivo) {
-        return archivo.read(reinterpret_cast<char*>(this), sizeof(Foto)).good();
-    }
-
-    unsigned long long getIdFoto() const { return idFoto; }
-    unsigned int getIdUsuario() const { return idUsuario; }
-    unsigned int getIdAlbum() const { return idAlbum; }
-    const char* getRutaArchivo() const { return rutaArchivo; }
-    long long getDesplazamientoSiguienteFoto() const { return desplazamientoSiguienteFoto; }
-
-    void setDesplazamientoSiguienteFoto(long long desp) { desplazamientoSiguienteFoto = desp; }
-};
-
-/*class Album{
-private:
-    char* nombreAlbum;
-    Fecha fecha;
-    char* ruta;
-    uint IDusuario;
-    char* nivelPrivacidad;
-};*/
-
 class Album {
 private:
+
     uint idAlbum;
     unsigned int idUsuario;
     char nombreAlbum[50];
     char privacidad[10];
-    long long desplazamientoPrimerFoto;
-    long long desplazamientoSiguienteAlbum;
+    unsigned long long idFoto;
+    char rutaArchivo[256];
+    int tamañoEnKB;
+    int conteoDeLikes;
+    Fecha fechaCaptura;
+    long long desplazamientoSiguiente;
+
 
 public:
+
     Album() {
         idAlbum = 0;
         idUsuario = 0;
-        for (int i = 0; i < 64; ++i) nombreAlbum[i] = '\0';
-        copiarCadena(privacidad,"publico",10);
-        desplazamientoPrimerFoto = -1;
-        desplazamientoSiguienteAlbum = -1;
-    }
+        for (int i = 0; i < 50; ++i) nombreAlbum[i] = '\0';
+        copiarCadena(privacidad, "publico", 10);
 
-    Album(unsigned int _idAlbum, unsigned int _idUsuario, const char* _nombre, char* _privado) {
-        idAlbum = _idAlbum;
-        idUsuario = _idUsuario;
-        copiarCadena(nombreAlbum, _nombre, 64);
-        copiarCadena(privacidad,_privado,10);
-        desplazamientoPrimerFoto = -1;
-        desplazamientoSiguienteAlbum = -1;
+        idFoto = 0;
+        for (int i = 0; i < 256; ++i) rutaArchivo[i] = '\0';
+        tamañoEnKB = 0;
+        conteoDeLikes = 0;
+        desplazamientoSiguiente = -1;
     }
 
     void escribirEnArchivo(std::fstream& archivo) const {
@@ -115,15 +56,62 @@ public:
     bool leerDeArchivo(std::fstream& archivo) {
         return archivo.read(reinterpret_cast<char*>(this), sizeof(Album)).good();
     }
+    void registrarYGuardarFoto(char* nombreUsuario, char* nombreAlbumParam, char* nombreFoto,
+                               unsigned int _idUsuario, uint _idAlbum, unsigned long long _idFoto,
+                               std::fstream& archivoDisco) {
+        idAlbum = _idAlbum;
+        idUsuario = _idUsuario;
+        idFoto = _idFoto;
+        copiarCadena(nombreAlbum, nombreAlbumParam, 50);
 
-    unsigned int getIdAlbum() const { return idAlbum; }
+        // Construcción de la ruta física usando un char[] y lógica manual (sin <string>)
+        char rutaComun[] = "./users/udeabook";
+        int i = 0;
+
+        for (int j = 0; rutaComun[j] != '\0'; j++) {
+            rutaArchivo[i++] = rutaComun[j];
+        }
+        rutaArchivo[i++] = '/';
+
+        for (int j = 0; nombreUsuario[j] != '\0'; j++) {
+            rutaArchivo[i++] = nombreUsuario[j];
+        }
+
+        const char* sufijoAlbums = "/albums/";
+        for (int j = 0; sufijoAlbums[j] != '\0'; j++) {
+            rutaArchivo[i++] = sufijoAlbums[j];
+        }
+
+        for (int j = 0; nombreFoto[j] != '\0'; j++) {
+            rutaArchivo[i++] = nombreFoto[j];
+        }
+        rutaArchivo[i] = '\0';
+        // 1. Crear directorios físicamente en el disco
+        std::error_code ec;
+        fs::create_directories(rutaArchivo, ec);
+        if (ec) {
+            std::cerr << "Error al crear directorios: " << ec.message() << '\n';
+        }
+        const char* extension = ".png";
+        for (int j = 0; extension[j] != '\0'; j++) {
+            rutaArchivo[i++] = extension[j];
+        }
+        rutaArchivo[i] = '\0';
+
+        archivoDisco.seekp(0, std::ios::end);
+        escribirEnArchivo(archivoDisco);
+    }
+    uint getIdAlbum() const { return idAlbum; }
     unsigned int getIdUsuario() const { return idUsuario; }
     const char* getNombreAlbum() const { return nombreAlbum; }
-  //  bool esPrivado() const { return privado; }
-    long long getDesplazamientoPrimerFoto() const { return desplazamientoPrimerFoto; }
-    long long getDesplazamientoSiguienteAlbum() const { return desplazamientoSiguienteAlbum; }
+    unsigned long long getIdFoto() const { return idFoto; }
+    const char* getRutaArchivo() const { return rutaArchivo; }
+    char*  const getPrivacidad(){return privacidad;}
+    int getConteoDeLikes(){return conteoDeLikes;}
+    void setConteoDeLikes(int likes){
+        conteoDeLikes=likes;
+    }
 
-    void setDesplazamientoPrimerFoto(long long desp) { desplazamientoPrimerFoto = desp; }
-    void setDesplazamientoSiguienteAlbum(long long desp) { desplazamientoSiguienteAlbum = desp; }
 };
+
 #endif // ALBUM_H

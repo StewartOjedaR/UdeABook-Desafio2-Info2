@@ -2,14 +2,21 @@
 #define SISTEMA_H
 #include <iostream>
 #include <fstream>
-//#include "album.h"
+#include "album.h"
 #include "mensaje.h"
 #include "usuario.h"
 using namespace std;
 typedef unsigned int uint;
 typedef unsigned char uchar;
 typedef unsigned long long ulong;
-
+bool sonCadenasIguales(const char* s1, const char* s2) {
+    int i = 0;
+    while (s1[i] != '\0' && s2[i] != '\0') {
+        if (s1[i] != s2[i]) return false;
+        i++;
+    }
+    return s1[i] == s2[i];
+}
 int calcularBytesMatriz(int n){
     return ((n*n)+7)/8;// Calcula el numero total de bytes necesarios para la matriz de bits (N * N bits / 8)
 };
@@ -21,22 +28,24 @@ class Sistema {
 private:
     Usuario* usuarioActual;
     uint contadorDeUsuarios;
-    ulong contadorDeMensajesGlobales;                 // Identificador unico global del mensaje para generar IDs únicos globales
+    ulong contadorDeMensajesGlobales;                 // Identificador unico global del mensaje para generar IDs unicos globales
     bool sesionIniciada;
     char* rutaBaseUsuarios;
     char* rutaBaseMensajes;
+    char* rutaBaseFotos;
+    char* rutaMatrizAdyacente;
     uchar* matrizAdyacente;
     char* usuarios;
 
 
 public:
-    Sistema(char* _rutaMatrizAdyacente, char* _rutaBaseUsuarios, char* _rutaBaseMensajes);
+    Sistema(char* _rutaMatrizAdyacente, char* _rutaBaseUsuarios, char* _rutaBaseMensajes, char* _rutaBaseFotos);
+
     ~Sistema();    // Destructor para liberar la memoria dinamica del nombre y de los flujos
     void calcularUsuariosDesdeDisco();
     bool abrirBaseDatosActual(char* rutaBaseUtilizada);
     void menuInicio();//
     bool iniciarSesion(char* idUsuario, char* contraseña);
-
     void menuPrincipal();
     void visitarPerfil(uint IdUsuario);
     bool enviarSolicitudDeAmistad(uint idUsuario,uint usuarioAEnviar);
@@ -45,17 +54,20 @@ public:
     void registrarNuevoUsuarioEnMatriz(uchar*& matrizAdyacente);  // Registra un nuevo usuario, expandiendo dinamicamente la matriz de adyacencia en disco
     void agregarAmistad(uint id1, uint id2);// Establece amistad entre dos usuarios usando operaciones de bits
     void sugerirAmigos(uint idUsuario); // Sugiere amigos encontrando amigos en común mediante operaciones de bits
-    bool estaSesionIniciada() const { return sesionIniciada; }
+    bool getSesionIniciada() const { return sesionIniciada; }
     uint getContadorDeUsuarios() const { return contadorDeUsuarios; }
     uint contarMensajesTotalesEnDisco();
+    Album* listarAlbumesAmigo(const char* rutaArchivoDisco, const char* nombreAmigoBuscado, int& totalEncontrados);
+
 
 };
 
-Sistema::Sistema(char* _rutaMatrizAdyacente, char* _rutaBaseUsuarios, char* _rutaBaseMensajes) {
+Sistema::Sistema(char* _rutaMatrizAdyacente, char* _rutaBaseUsuarios, char* _rutaBaseMensajes,char* _rutaBaseFotos) {
     usuarioActual = nullptr;
     sesionIniciada = false;
     rutaBaseMensajes= _rutaBaseMensajes;
     rutaBaseUsuarios=_rutaBaseUsuarios;
+    rutaBaseFotos=_rutaBaseFotos;
     //cargar matriz;
     fstream archivoMatriz(_rutaMatrizAdyacente, std::ios::in | std::ios::out | std::ios::binary | std::ios::app);
     if (!archivoMatriz.is_open()) {
@@ -63,7 +75,8 @@ Sistema::Sistema(char* _rutaMatrizAdyacente, char* _rutaBaseUsuarios, char* _rut
         creador.close();
         archivoMatriz.open("matrizAdyacente.txt", std::ios::in | std::ios::out | std::ios::binary);
     }
-    matrizAdyacente=new unsigned char[calcularBytesMatriz(contadorDeUsuarios)];
+    calcularUsuariosDesdeDisco();
+    matrizAdyacente=new unsigned char[contadorDeUsuarios];
     // Leer la matriz desde el archivo
     for (int usuarioFila = 0; usuarioFila < contadorDeUsuarios; ++usuarioFila) {
         for (int usuarioColumna = 0; usuarioColumna < contadorDeUsuarios; ++usuarioColumna) {
@@ -77,9 +90,28 @@ Sistema::Sistema(char* _rutaMatrizAdyacente, char* _rutaBaseUsuarios, char* _rut
     }
     archivoMatriz.close();
     contadorDeMensajesGlobales=contarMensajesTotalesEnDisco();
+    rutaMatrizAdyacente=_rutaMatrizAdyacente;
+
 
 }
 Sistema::~Sistema() {
+
+}
+bool Sistema::iniciarSesion(char* nombreUsuario, char* contraseña){
+    std::fstream archivoUsuarios(rutaBaseUsuarios, std::ios::in | std::ios::out | std::ios::binary | std::ios::app);
+    if (!archivoUsuarios.is_open()) {
+        std::ofstream creador("usuarios.txt", std::ios::binary);
+        creador.close();
+        archivoUsuarios.open("usuarios.txt", std::ios::in | std::ios::out | std::ios::binary);
+    }
+    Usuario* usuarioTemp= new Usuario(nombreUsuario, archivoUsuarios,usuarioActual);
+    delete usuarioTemp;
+    if (sonCadenasIguales(usuarioActual->getContrasema(),contraseña)){
+        return true;
+    }else{
+        return false;
+    }
+
 
 }
 
@@ -89,7 +121,7 @@ void Sistema::registrarNuevoUsuario(const char* nombreUsuario, const char* contr
     uint nuevoId = contadorDeUsuarios+1;
 
     // 2. Crear el objeto Usuario en memoria temporal
-    Usuario nuevoUsuario(nuevoId, nombreUsuario, contrasena);
+    Usuario nuevoUsuario(nuevoId, nombreUsuario,contrasena);
 
     // 3. Abrir el archivo permanente de usuarios para escribir al final
     std::fstream archivoUsuarios(rutaBaseUsuarios, std::ios::in | std::ios::out | std::ios::binary | std::ios::app);
@@ -145,9 +177,6 @@ void Sistema::registrarNuevoUsuarioEnMatriz(uchar*& matrizAdyacente) {
      cout << "Nuevo usuario registrado. Total usuarios: " << contadorDeUsuarios << "\n";
 
 }
-
-
-
 void Sistema::agregarAmistad(uint id1, uint id2) {
     if (id1 >= contadorDeUsuarios || id2 >= contadorDeUsuarios) return;
     usuarioActual->establecerAmistad(matrizAdyacente,id1, id2,contadorDeUsuarios);
@@ -198,17 +227,34 @@ void Sistema::menuInicio() {
         case 2: {
             char nombre[50];
             char clave[20];
-
             cout << "\n--- INICIAR SESION ---\n";
             cout << "Usuario: ";
             cin.getline(nombre, 50);
 
             cout << "Contrasena: ";
             cin.getline(clave, 20);
+            int contador=0;
 
-            // Aquí implementaremos la lógica para verificar credenciales en 'usuarios.dat'
-            // por ejemplo: iniciarSesion(nombre, clave);
-            cout << "Funcion de inicio de sesion en proceso de conexion con el disco...\n";
+            while(!iniciarSesion(nombre, clave)&&contador<3 ){
+
+                cout << "Iniciando sesion...\n"<<"Usuario o contreseña incorrecto, intente de nuevo";
+                cout << "\n--- INICIAR SESION ---\n";
+                cout << "Usuario: ";
+                cin.getline(nombre, 50);
+                cout << "Contrasena: ";
+                cin.getline(clave, 20);
+                contador++;
+                if (contador==2){
+                    sesionIniciada=false;
+                }
+
+            }
+            if (!sesionIniciada){
+                cout<<"Demasiados intentos, no se pudo iniciar sesion";
+                break;
+            }
+            cout << "Iniciando sesion...\n";
+            cout << "sesion iniciada";
             break;
         }
         case 3:
@@ -239,7 +285,6 @@ void Sistema::calcularUsuariosDesdeDisco() {
         contadorDeUsuarios = static_cast<unsigned int>(tamanioTotalBytes / sizeof(Usuario));
     }
 }
-// Método para contar el total absoluto de mensajes almacenados en el disco
 uint Sistema::contarMensajesTotalesEnDisco() {
     // Abrir el archivo en modo binario y colocar el cabezal directamente al final (ios::ate)
     ifstream archivo(rutaBaseMensajes, ios::binary | ios::ate);
@@ -261,5 +306,117 @@ uint Sistema::contarMensajesTotalesEnDisco() {
     int totalMensajes = bytesTotales / sizeof(Mensaje);
 
     return totalMensajes;
+}
+void Sistema::menuPrincipal(){
+    Registro* listaDeAmigos=nullptr;
+    usuarioActual->listarAmigos(sesionIniciada,rutaMatrizAdyacente,rutaBaseUsuarios,contadorDeUsuarios,listaDeAmigos);
+
+
+}
+
+
+
+Album* Sistema::listarAlbumesAmigo(const char* rutaArchivoDisco, const char* nombreAmigoBuscado, int& totalEncontrados) {
+    std::fstream archivo(rutaArchivoDisco, std::ios::in | std::ios::binary);
+    if (!archivo.is_open()) {
+        totalEncontrados = 0;
+        return nullptr;
+    }
+
+    totalEncontrados = 0;
+    Album temp;
+
+    // Primera pasada: Contar registros que coincidan con el usuario y tengan privacidad permitida
+    while (temp.leerDeArchivo(archivo)) {
+        // Verificamos si la ruta contiene el nombre del usuario o si se evalúa la privacidad
+        // Nota: Asumimos que la privacidad se almacena como "publico" o "amigos"
+        bool esPublicoOAmigos = sonCadenasIguales(temp.getPrivacidad(), "publico") ||
+                                sonCadenasIguales(temp.getPrivacidad(), "amigos");
+
+        // Puedes validar adicionalmente si el archivo pertenece al usuario mediante su ruta o ID
+        if (esPublicoOAmigos) {
+            totalEncontrados++;
+        }
+    }
+
+    if (totalEncontrados == 0) {
+        archivo.close();
+        return nullptr;
+    }
+
+    Album* listaFiltrada = new Album[totalEncontrados];
+    archivo.clear();
+    archivo.seekg(0, std::ios::beg);
+
+    int idx = 0;
+    while (temp.leerDeArchivo(archivo) && idx < totalEncontrados) {
+        bool esPublicoOAmigos = sonCadenasIguales(temp.getPrivacidad(), "publico") ||
+                                sonCadenasIguales(temp.getPrivacidad(), "amigos");
+        if (esPublicoOAmigos) {
+            listaFiltrada[idx] = temp;
+            idx++;
+        }
+    }
+
+    archivo.close();
+    return listaFiltrada;
+}
+void iniciarCarruselAlbum(Album* fotosAlbum, int totalFotos, const char* rutaArchivoDisco) {
+    if (fotosAlbum == nullptr || totalFotos <= 0) {
+        std::cout << "No hay fotos para mostrar en el carrusel.\n";
+        return;
+    }
+
+    int indiceActual = 0;
+    int opcion = 0;
+
+    while (true) {
+        // Visualización de la foto actual
+        std::cout << "\n========================================\n";
+        std::cout << "              FOTOS          \n";
+        std::cout << "========================================\n";
+        std::cout << "Foto [" << (indiceActual + 1) << " de " << totalFotos << "]\n";
+        std::cout << "ID Foto: " << fotosAlbum[indiceActual].getIdFoto() << "\n";
+        std::cout << "Ruta: " << fotosAlbum[indiceActual].getRutaArchivo() << "\n";
+        std::cout << "Likes: " << fotosAlbum[indiceActual].getConteoDeLikes() << "\n";
+        std::cout << "----------------------------------------\n";
+        std::cout << "Opciones:\n";
+        std::cout << "1. Siguiente foto\n";
+        std::cout << "2. Foto previa\n";
+        std::cout << "3. Dar / Quitar like\n";
+        std::cout << "4. Salir del album\n";
+        std::cout << "Seleccione una opcion: ";
+        std::cin >> opcion;
+
+        if (opcion == 4) {
+            std::cout << "Saliendo del album...\n";
+            break;
+        }
+
+        switch (opcion) {
+        case 1: // Siguiente (Circular)
+            indiceActual = (indiceActual + 1) % totalFotos;
+            break;
+        case 2: // Previa (Circular)
+            indiceActual = (indiceActual - 1 + totalFotos) % totalFotos;
+            break;
+        case 3: { // Dar / Quitar like
+            // Modificamos el conteo de likes en memoria (ejemplo alternando +1 / -1 o con lógica de estado)
+            // Para simplificar, incrementamos y actualizamos en disco.
+            int likesActuales = fotosAlbum[indiceActual].getConteoDeLikes();
+            fotosAlbum[indiceActual].setConteoDeLikes(likesActuales + 1); // O alternar lógica de like
+
+            std::cout << "¡Accion de like procesada! Total de likes: " << fotosAlbum[indiceActual].getConteoDeLikes() << "\n";
+
+            // Actualizar el cambio de manera persistente en el archivo binario
+            // (Buscar el registro por idFoto y reescribir su bloque en el archivo)
+            // ...
+            break;
+        }
+        default:
+            std::cout << "Opcion no valida. Intente de nuevo.\n";
+            break;
+        }
+    }
 }
 #endif // SISTEMA_H

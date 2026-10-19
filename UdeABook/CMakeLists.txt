@@ -10,7 +10,8 @@ add_executable(UdeABook main.cpp
     album.h
     usuario.h
     mensaje.h
-    medidor.h)
+    medidor.h
+    fecha.h)
 
 include(GNUInstallDirs)
 install(TARGETS UdeABook
