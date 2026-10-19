@@ -129,7 +129,7 @@ void Mensaje::leerNuevosMensajes(uint idUsuarioActual, char* rutaBaseMensajes) {
         }
     }
 
-    // 3. Ordenar cronológicamente por fecha (Burbuja)
+    // 3. Ordenar cronologicamente por fecha (Burbuja)
     for (int i = 0; i < cantidadSinLeer - 1; ++i) {
         for (int j = 0; j < cantidadSinLeer - i - 1; ++j) {
             if (!arregloReferencias[j].fechaMensaje.esAnteriorOIgual(arregloReferencias[j + 1].fechaMensaje)) {

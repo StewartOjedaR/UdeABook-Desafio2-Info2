@@ -13,7 +13,7 @@ bool cadenasIguales(const char* str1, const char* str2) {
     int i = 0;
     while (str1[i] != '\0' && str2[i] != '\0') {
         if (str1[i] != str2[i]) {
-            return false; // Si un carácter difiere, no son iguales
+            return false; // Si un caracter difiere, no son iguales
         }
         i++;
     }
@@ -187,7 +187,7 @@ Usuario::Usuario() {
     desplazamientoPrimerMensaje = -1;
 }
 
-// Constructor con parámetros
+// Constructor con parametros
 Usuario::Usuario(uint _id, const char* _nombreUsuario, const char* _contrasema) {
     ID = _id;
     copiarCadena(nombreUsuario,_nombreUsuario,50);
@@ -197,7 +197,7 @@ Usuario::Usuario(uint _id, const char* _nombreUsuario, const char* _contrasema) 
     desplazamientoPrimerMensaje = -1;
 }
 
-// Constructor para iniciar sesión
+// Constructor para iniciar sesion
 Usuario::Usuario(char* _nombreUsuario, fstream& archivoUsuarios, Usuario*& ptrUsuarioActual) {
     ptrUsuarioActual = nullptr;
     Usuario usrTemp; // CORREGIDO: Instancia local en la pila de llamadas, NO puntero nulo
@@ -313,7 +313,7 @@ void Usuario::listarAmigos(bool sesionIniciada, char* nombreArchivoMatriz, char*
     ListaEnlazada* lista=nullptr;
     bool tieneAmigos = false;
     int contadorAmigos=0;
-    // Recorremos todos los usuarios registrados para ver quiénes son amigos en la matriz
+    // Recorremos todos los usuarios registrados para ver quienes son amigos en la matriz
     for (unsigned int candidato = 0; candidato < cantidadDeUsuarios; ++candidato) {
         if (candidato == idUsuarioActual) continue; // Ignorarse a sí mismo
 

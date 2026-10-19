@@ -137,7 +137,7 @@ void Sistema::registrarNuevoUsuario(const char* nombreUsuario, const char* contr
     archivoUsuarios.close();
 
     // 4. Ampliar la matriz de adyacencia de bits para el nuevo usuario
-    registrarNuevoUsuarioEnMatriz(matrizAdyacente); // Esta función ya incrementa cantidadDeUsuarios y agranda la matriz en el archivo mat
+    registrarNuevoUsuarioEnMatriz(matrizAdyacente); // Esta funcion ya incrementa cantidadDeUsuarios y agranda la matriz en el archivo
 
     cout << "Usuario creado con éxito!\n";
     cout << " - ID: " << nuevoId << "\n";
@@ -309,8 +309,6 @@ void Sistema::menuPrincipal() {
         cout << "      Ude@Book - MENU PRINCIPAL       \n";
         cout << "      Usuario: " << usuarioActual->getNombreUsuario() << "\n";
         cout << "========================================\n";
-
-        // IMPRESIÓN DE RUTAS DE HASTA 3 AMIGOS
         cout << "--- Rutas de foto de perfil de tus amigos ---\n";
         int amigosMostrados = 0;
 
@@ -527,7 +525,7 @@ void Sistema::visitarPerfil(const char* nombreBuscado) {
         return;
     }
 
-    // Validación sobre la matriz adyacente para saber si pueden ver las fotos
+    // Validacion sobre la matriz adyacente para saber si pueden ver las fotos
     bool esAmigo = usuarioActual->consultarAmistad(matrizAdyacente, usuarioActual->getID(), usuarioVisitado.getID(), contadorDeUsuarios);
 
     if (esAmigo) {
@@ -538,7 +536,7 @@ void Sistema::visitarPerfil(const char* nombreBuscado) {
 
         if (albumes != nullptr && totalAlbumes > 0) {
             iniciarCarruselAlbum(albumes, totalAlbumes, rutaBaseFotos);
-            delete[] albumes; // Liberación de memoria dinámica
+            delete[] albumes; // Liberación de memoria dinamica
         } else {
             cout << "   Este usuario no tiene fotos cargadas.\n";
         }
